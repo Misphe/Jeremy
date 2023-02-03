@@ -16,7 +16,7 @@ extern "C" {
 
 #define SCREEN_WIDTH	640
 #define SCREEN_HEIGHT	480
-#define FULLSCREEN false
+#define FULLSCREEN true
 
 
 //player's walking speed in pixels per second
