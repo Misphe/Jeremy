@@ -1,7 +1,7 @@
 #define _USE_MATH_DEFINES
-#include<math.h>
-#include<stdio.h>
-#include<string.h>
+#include <math.h>
+#include <stdio.h>
+#include <string.h>
 #include <iostream>
 #include <stdlib.h>
 #include <string>
@@ -16,7 +16,7 @@ extern "C" {
 
 #define SCREEN_WIDTH	640
 #define SCREEN_HEIGHT	480
-#define FULLSCREEN true
+#define FULLSCREEN false
 
 
 //player's walking speed in pixels per second
@@ -25,14 +25,18 @@ extern "C" {
 #define PLATFORMS 7
 
 #define GRAVITY 0.004
-#define JUMP_POWER 0.3
-#define HOLD_POWER 0.4
+#define JUMP_POWER 0.4
+#define HOLD_POWER 0.5
 #define MAP_SPEED 0.2
 
 #define STARTING_Y (SCREEN_HEIGHT/2)
-#define STARTING_X 100
+#define STARTING_X 200
 
 #define PLATFORMS_Y_DIFFERENCE 40
+#define PLATFORM_WIDTH (150 + rand()%100)
+#define PLATFORM_GAP (40 + rand()%40)
+
+#define ENEMY_SPEED 0.25
 
 
 
@@ -50,6 +54,7 @@ struct Jump {
 	bool in_jump;
 	float jump_value;
 }jump;
+
 
 void DrawSurface(SDL_Renderer* renderer, SDL_Texture* texture, int x, int y) {
 	// Get the width and height of the texture
@@ -95,8 +100,10 @@ struct sdl_structures {
 	SDL_Surface* screen = SDL_CreateRGBSurface(0, SCREEN_WIDTH, SCREEN_HEIGHT, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
 	SDL_Surface* JeremyLeft;
 	SDL_Surface* JeremyRight;
+	SDL_Surface* EnemyLeft;
+	SDL_Surface* EnemyRight;
 	SDL_Texture* player;
-	SDL_Surface* platform;
+	SDL_Texture* enemy;
 	SDL_Texture* charsetTexture;
 	SDL_Window* window;
 	SDL_Renderer* renderer;
@@ -134,6 +141,15 @@ struct Platforms {
 	float y;
 	float width;
 }platform[PLATFORMS];
+
+struct Enemy {
+	float x;
+	float y;
+	float speed;
+	int width = 30;
+	int height = 40;
+	int plat;
+}enemy[PLATFORMS];
 
 
 
@@ -179,6 +195,10 @@ void InitSDL() {
 	sdl.JeremyLeft = SDL_LoadBMP("./sprites/JeremyLeftBMP.bmp");
 	sdl.JeremyRight = SDL_LoadBMP("./sprites/JeremyRightBMP.bmp");
 	sdl.player = SDL_CreateTextureFromSurface(sdl.renderer, sdl.JeremyLeft);
+
+	sdl.EnemyLeft = SDL_LoadBMP("./sprites/EnemyLeft.bmp");
+	sdl.EnemyRight = SDL_LoadBMP("./sprites/EnemyRight.bmp");
+	sdl.enemy = SDL_CreateTextureFromSurface(sdl.renderer, sdl.EnemyLeft);
 }
 
 void RenderScreen() {
@@ -266,9 +286,21 @@ void Move(const Uint8* input, double delta) {
 	}
 }
 
+void EnemyMove(double delta) {
+	for (int i = 0; i < PLATFORMS; i++) {
+		if (delta > 0){
+			if (enemy[i].x + enemy[i].width > platform[enemy[i].plat].x + platform[enemy[i].plat].width || enemy[i].x < platform[enemy[i].plat].x) {
+				enemy[i].speed = -enemy[i].speed;
+			}
+		enemy[i].x += enemy[i].speed * delta * ENEMY_SPEED;
+		}
+	}
+}
+
 void DrawSprites() {
 	DrawSurface(sdl.renderer, sdl.player, player.x, player.y);
 	for (int i = 0; i < PLATFORMS; i++) {
+		DrawSurface(sdl.renderer, sdl.enemy, enemy[i].x + enemy[i].width/2, enemy[i].y - enemy[i].height/2);
 		DrawRect(platform[i].x, platform[i].y, platform[i].width, 102, 102, 102);
 	}
 }
@@ -277,45 +309,63 @@ void MapMove(float delta) {
 	player.x -= delta * MAP_SPEED;
 	for (int i = 0; i < PLATFORMS; i++) {
 		platform[i].x -= delta * MAP_SPEED;
+		enemy[i].x -= delta * MAP_SPEED;
 	}
 }
 
 void SetPlatforms() {
 	platform[0].x = 0;
-	platform[0].width = 250;
+	platform[0].width = 300;
 	platform[0].y = STARTING_Y + sdl.JeremyLeft->h / 2;
+	enemy[0].x = platform[0].x;
+	enemy[0].y = platform[0].y;
+	enemy[0].plat = 0;
+	enemy[0].speed = (rand() % 1000)/1000.0;
 	for (int i = 1; i < PLATFORMS; i++) {
 		platform[i].x = platform[i-1].x + platform[i-1].width + 35 + rand()%70;
 		platform[i].y = STARTING_Y + sdl.JeremyLeft->h/2;
-		platform[i].width = 30 + rand()%41;
+		platform[i].width = PLATFORM_WIDTH;
 		platform[i].y = platform[i-1].y + rand() % (2 * PLATFORMS_Y_DIFFERENCE + 1) - PLATFORMS_Y_DIFFERENCE;
+		enemy[i].x = platform[i].x;
+		enemy[i].y = platform[i].y;
+		enemy[i].plat = i;
+		enemy[i].speed = (rand() % 1000) / 1000.0;
 	}
 }
 
 void ResetPlatforms() {
 	if (platform[0].x + platform[0].width < 0) {
 		if (platform[6].x + platform[6].width > SCREEN_WIDTH) {
-			platform[0].x = platform[6].x + platform[6].width + rand() % 50 + 10;
+			platform[0].x = platform[6].x + platform[6].width + PLATFORM_GAP;
 		}
 		else platform[0].x = SCREEN_WIDTH;
 
-		platform[0].width = 30 + rand() % 41;
+		platform[0].width = PLATFORM_WIDTH;
 		platform[0].y = platform[PLATFORMS - 1].y + rand() % (2 * PLATFORMS_Y_DIFFERENCE + 1) - PLATFORMS_Y_DIFFERENCE;
 		if (platform[0].y > SCREEN_HEIGHT - 50 || platform[0].y < 100) {
 			platform[0].y = platform[PLATFORMS - 1].y;
 		}
+		enemy[0].x = platform[0].x;
+		enemy[0].y = platform[0].y;
+		enemy[0].plat = 0;
+		enemy[0].speed = (rand() % 1000) / 1000.0;
 	}
+
 	for (int i = 1; i < PLATFORMS; i++) {
 		if (platform[i].x + platform[i].width < 0) {
 			if (platform[i-1].x + platform[i-1].width > SCREEN_WIDTH) {
-				platform[i].x = platform[i-1].x + platform[i-1].width + rand() % 50 + 10;
+				platform[i].x = platform[i-1].x + platform[i-1].width + PLATFORM_GAP;
 			}
 			else platform[i].x = SCREEN_WIDTH;
-			platform[i].width = 30 + rand() % 41;
+			platform[i].width = PLATFORM_WIDTH;
 			platform[i].y = platform[i - 1].y + rand() % (2 * PLATFORMS_Y_DIFFERENCE + 1) - PLATFORMS_Y_DIFFERENCE;
 			if (platform[i].y > SCREEN_HEIGHT - 50 || platform[i].y < 100) {
 				platform[i].y = platform[i - 1].y;
 			}
+			enemy[i].x = platform[i].x;
+			enemy[i].y = platform[i].y;
+			enemy[i].plat = i;
+			enemy[i].speed = (rand() % 1000) / 1000.0;
 		}
 	}
 }
@@ -358,6 +408,14 @@ void GameOver() {
 	if (player.y - y_dif >= SCREEN_HEIGHT || player.x + x_dif <= 0) {
 		gameover = true;
 	}
+
+	for (int i = 0; i < PLATFORMS; i++) {
+		if (player.x + x_dif > enemy[i].x && player.x - x_dif < enemy[i].x + enemy[i].width) {
+			if (player.y + y_dif > enemy[i].y - enemy[i].height && player.y - y_dif < enemy[i].y) {
+				gameover = true;
+			}
+		}
+	}
 }
 
 void GameOverScreen() {
@@ -366,6 +424,7 @@ void GameOverScreen() {
 		DrawText(text, 20, 20, SCREEN_WIDTH / 2 - (text.size() * 20 / 2), SCREEN_HEIGHT / 2 - 10);
 	}
 }
+
 
 // main
 #ifdef __cplusplus
@@ -391,6 +450,8 @@ int main(int argc, char **argv) {
 		new_game = false;
 		gameover = false;
 		SetPlatforms();
+		player.pre_x = 100;
+		player.pre_y = SCREEN_HEIGHT / 2;
 		player.x = 100;
 		player.y = SCREEN_HEIGHT / 2;
 		while (!new_game && !quit ) {
@@ -401,10 +462,11 @@ int main(int argc, char **argv) {
 			if (!pause && !gameover) {
 				timer += delta;
 				MapMove(delta);
+				EnemyMove(delta);
 				ResetPlatforms();
 				DoJump(delta);
 				Fall();
-				GameOver();
+				//GameOver();
 			}
 			DrawSprites();
 			DisplayPoints(timer);
