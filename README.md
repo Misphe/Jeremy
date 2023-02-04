@@ -6,5 +6,5 @@ Jeremy ius also a name of the hero you control.
 
 ## Next steps
 
-* Add enemies
-* Fix movement
+* Add planes
+* Balance mechanics
