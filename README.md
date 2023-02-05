@@ -4,7 +4,13 @@ Jeremy is a 2D game written in C++ and SDL library.
 
 Jeremy ius also a name of the hero you control.
 
-## Next steps
+##Controls:
+* Arrows - moving
+* Space - shoot
+* p - pause
+* n - new game
+* esc - quit game
 
-* Add enemies
-* Fix movement
+
+## Next steps
+* `currently empty`

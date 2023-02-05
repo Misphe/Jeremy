@@ -7,20 +7,19 @@
 #include <string>
 
 using std::string;
-using std::ostringstream;
 
 extern "C" {
 #include"./SDL2-2.0.10/include/SDL.h"
 #include"./SDL2-2.0.10/include/SDL_main.h"
 }
 
-#define SCREEN_WIDTH	640
-#define SCREEN_HEIGHT	480
+#define SCREEN_WIDTH	840
+#define SCREEN_HEIGHT	680
 #define FULLSCREEN false
 
 
 //player's walking speed in pixels per second
-#define HORIZONTAL_MOVEMENT 250
+#define HORIZONTAL_MOVEMENT 300
 #define VERTICAL_MOVEMENT 150
 #define PLATFORMS 7
 
@@ -103,6 +102,8 @@ struct sdl_structures {
 	SDL_Surface* EnemyLeft;
 	SDL_Surface* EnemyRight;
 	SDL_Texture* player;
+	SDL_Surface* Bullet;
+	SDL_Texture* bullet;
 	SDL_Texture* enemy;
 	SDL_Texture* charsetTexture;
 	SDL_Window* window;
@@ -150,6 +151,13 @@ struct Enemy {
 	int height = 40;
 	int plat;
 }enemy[PLATFORMS];
+
+struct Bullet {
+	float x;
+	float y;
+	float speed;
+	bool fired = false;;
+}bullet;
 
 
 
@@ -199,6 +207,9 @@ void InitSDL() {
 	sdl.EnemyLeft = SDL_LoadBMP("./sprites/EnemyLeft.bmp");
 	sdl.EnemyRight = SDL_LoadBMP("./sprites/EnemyRight.bmp");
 	sdl.enemy = SDL_CreateTextureFromSurface(sdl.renderer, sdl.EnemyLeft);
+
+	sdl.Bullet = SDL_LoadBMP("./sprites/Bullet.bmp");
+	sdl.bullet = SDL_CreateTextureFromSurface(sdl.renderer, sdl.Bullet);
 }
 
 void RenderScreen() {
@@ -226,6 +237,13 @@ bool EmptySpace(float x, float y) {
 	return true;
 }
 
+void Shoot() {
+	bullet.x = player.x - sdl.JeremyLeft->w;
+	bullet.y = player.y;
+	bullet.speed = 0.1;
+	bullet.fired = true;
+}
+
 void Move(const Uint8* input, double delta) {
 	while (SDL_PollEvent(&sdl.event)) {
 		switch (sdl.event.type) {
@@ -241,6 +259,11 @@ void Move(const Uint8* input, double delta) {
 					if (sdl.event.key.keysym.sym == SDLK_RIGHT) {
 						SDL_DestroyTexture(sdl.player);
 						sdl.player = SDL_CreateTextureFromSurface(sdl.renderer, sdl.JeremyRight);
+					}
+					if (sdl.event.key.keysym.sym == SDLK_SPACE) {
+						if (bullet.fired == false) {
+							Shoot();
+						}
 					}
 				}
 				if (sdl.event.key.keysym.sym == SDLK_p) {
@@ -294,6 +317,31 @@ void EnemyMove(double delta) {
 			}
 		enemy[i].x += enemy[i].speed * delta * ENEMY_SPEED;
 		}
+
+	}
+}
+
+void BulletMove() {
+	if (bullet.fired) {
+		bullet.x -= bullet.speed;
+		if (bullet.x < 0) {
+			bullet.fired = false;
+		}
+	}
+}
+
+void BulletKill() {
+	if (bullet.fired) {
+		for (int i = 0; i < PLATFORMS; i++) {
+			if (bullet.x < enemy[i].x + enemy[i].width && bullet.x > enemy[i].x && bullet.y > enemy[i].y - enemy[i].width && bullet.y < enemy[i].y) {
+				bullet.fired = false;
+				bullet.x = NULL;
+				bullet.y = NULL;
+				enemy[i].x = NULL;
+				enemy[i].y = NULL;
+				enemy[i].speed = NULL;
+			}
+		}
 	}
 }
 
@@ -302,6 +350,9 @@ void DrawSprites() {
 	for (int i = 0; i < PLATFORMS; i++) {
 		DrawSurface(sdl.renderer, sdl.enemy, enemy[i].x + enemy[i].width/2, enemy[i].y - enemy[i].height/2);
 		DrawRect(platform[i].x, platform[i].y, platform[i].width, 102, 102, 102);
+	}
+	if (bullet.fired) {
+		DrawSurface(sdl.renderer, sdl.bullet, bullet.x, bullet.y);
 	}
 }
 
@@ -396,8 +447,7 @@ void Fall() {
 	}
 }
 
-void DisplayPoints(int timer) {
-	string text;
+void DisplayPoints(int timer, string text) {
 	text = "Points: " + std::to_string(timer / 1000);
 	DrawText(text, 16, 16, SCREEN_WIDTH - 200, 50);
 }
@@ -418,9 +468,9 @@ void GameOver() {
 	}
 }
 
-void GameOverScreen() {
+void GameOverScreen(string text) {
 	if (gameover) {
-		string text = "You lost! Press n to restart";
+		text = "You lost! Press n to restart";
 		DrawText(text, 20, 20, SCREEN_WIDTH / 2 - (text.size() * 20 / 2), SCREEN_HEIGHT / 2 - 10);
 	}
 }
@@ -443,6 +493,7 @@ int main(int argc, char **argv) {
 
 	t1 = t2 = SDL_GetTicks();
 	int timer = 0;
+	string text;
 
 	while(!quit) {
 		t1 = t2 = SDL_GetTicks();
@@ -454,6 +505,9 @@ int main(int argc, char **argv) {
 		player.pre_y = SCREEN_HEIGHT / 2;
 		player.x = 100;
 		player.y = SCREEN_HEIGHT / 2;
+		bullet.x = NULL;
+		bullet.y = NULL;
+		bullet.fired = false;
 		while (!new_game && !quit ) {
 
 			delta = SDL_GetTicks() - t2;
@@ -467,14 +521,16 @@ int main(int argc, char **argv) {
 				DoJump(delta);
 				Fall();
 				GameOver();
+				BulletMove();
+				BulletKill();
 			}
 			DrawSprites();
-			DisplayPoints(timer);
-			GameOverScreen();
+			DisplayPoints(timer, text);
+			GameOverScreen(text);
 			RenderScreen();
 			Move(input, delta);
 		}
 	}
 	FreeSDL();
 	return 0;
-	};
+};
