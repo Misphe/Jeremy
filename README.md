@@ -1,16 +1,20 @@
-# Jeremy
+# Agent Jeremy
 
-Jeremy is a 2D game written in C++ and SDL library.
+Agent Jeremy is a 2D game written in C++ and SDL library.
 
-Jeremy ius also a name of the hero you control.
+Jeremy is name of the hero you control.
 
-##Controls:
+## Controls:
 * Arrows - moving
 * Space - shoot
 * p - pause
 * n - new game
 * esc - quit game
+* m - menu
+* enter - confirm choice
 
 
 ## Next steps
-* `currently empty`
+* Make highscores list
+* make it prettier
+* 

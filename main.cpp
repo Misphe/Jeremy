@@ -37,6 +37,8 @@ extern "C" {
 
 #define ENEMY_SPEED 0.25
 
+#define MENU_TITLE_Y (SCREEN_HEIGHT / 5)
+
 
 
 
@@ -44,6 +46,7 @@ bool quit;
 bool gameover = false;
 bool new_game;
 bool pause = false;
+bool in_menu = false;
 
 Uint8 red = 255;
 Uint8 blue = 255;
@@ -113,21 +116,33 @@ struct sdl_structures {
 void DrawText(string text, int width, int height, int x, int y) {
 	int charW = 8;
 	int charH = 8;
-	Uint8 red = 255;
-	Uint8 green = 0;
-	Uint8 blue = 0;
 	for (char c : text) {
 		int charIndex = c;
 		int charX = (charIndex % 16) * charW;
 		int charY = (charIndex / 16) * charH;
 		SDL_Rect charRect = { charX, charY, charW, charH };
 		SDL_Rect destRect = { x, y, width, height };
-		SDL_SetRenderDrawColor(sdl.renderer, red, green, blue, 255);
+		SDL_RenderCopy(sdl.renderer, sdl.charsetTexture, &charRect, &destRect);
+		x += width;
+	}
+}
+
+void DrawTextWithBackground(string text, int width, int height, int x, int y, int r, int g, int b) {
+	int charW = 8;
+	int charH = 8;
+	for (char c : text) {
+		int charIndex = c;
+		int charX = (charIndex % 16) * charW;
+		int charY = (charIndex / 16) * charH;
+		SDL_Rect charRect = { charX, charY, charW, charH };
+		SDL_Rect destRect = { x, y, width, height };
+		SDL_SetRenderDrawColor(sdl.renderer, r, g, b, 255);
 		SDL_RenderFillRect(sdl.renderer, &destRect);
 		SDL_RenderCopy(sdl.renderer, sdl.charsetTexture, &charRect, &destRect);
 		x += width;
 	}
 }
+
 
 
 struct Player {
@@ -169,16 +184,24 @@ struct colors {
 	int white = SDL_MapRGB(sdl.screen->format, 255, 255, 255);
 }const color;
 
-void DrawRect(double x, double y, double width, int red, int green, int blue) {
+void DrawRect(double x, double y, double width, double height, int red, int green, int blue) {
 	SDL_SetRenderDrawColor(sdl.renderer, red, green, blue, 255);
-	SDL_Rect rect = { x, y, width, SCREEN_HEIGHT - y};
+	SDL_Rect rect = { x, y, width, height};
 	SDL_RenderFillRect(sdl.renderer, &rect);
 }
 
 void FreeSDL() {
-	SDL_FreeSurface(sdl.charset);
 	SDL_FreeSurface(sdl.screen);
+	SDL_FreeSurface(sdl.charset);
+	SDL_FreeSurface(sdl.JeremyRight);
+	SDL_FreeSurface(sdl.JeremyLeft);
+	SDL_FreeSurface(sdl.EnemyLeft);
+	SDL_FreeSurface(sdl.EnemyRight);
+	SDL_FreeSurface(sdl.Bullet);
 	SDL_DestroyTexture(sdl.charsetTexture);
+	SDL_DestroyTexture(sdl.player);
+	SDL_DestroyTexture(sdl.enemy);
+	SDL_DestroyTexture(sdl.bullet);
 	SDL_DestroyWindow(sdl.window);
 	SDL_DestroyRenderer(sdl.renderer);
 	SDL_Quit();
@@ -196,7 +219,6 @@ void InitSDL() {
 
 	sdl.charset = SDL_LoadBMP("./charset.bmp");
 	sdl.charsetTexture = SDL_CreateTextureFromSurface(sdl.renderer, sdl.charset);
-	SDL_FreeSurface(sdl.charset);
 
 
 	SDL_ShowCursor(SDL_DISABLE);
@@ -271,6 +293,9 @@ void Move(const Uint8* input, double delta) {
 				}
 				if (sdl.event.key.keysym.sym == SDLK_n) {
 					new_game = true;
+				}
+				if (sdl.event.key.keysym.sym == SDLK_m) {
+					in_menu = true;
 				}
 				break;
 			case SDL_KEYUP:
@@ -349,7 +374,7 @@ void DrawSprites() {
 	DrawSurface(sdl.renderer, sdl.player, player.x, player.y);
 	for (int i = 0; i < PLATFORMS; i++) {
 		DrawSurface(sdl.renderer, sdl.enemy, enemy[i].x + enemy[i].width/2, enemy[i].y - enemy[i].height/2);
-		DrawRect(platform[i].x, platform[i].y, platform[i].width, 102, 102, 102);
+		DrawRect(platform[i].x, platform[i].y, platform[i].width, SCREEN_HEIGHT - platform[i].y, 102, 102, 102);
 	}
 	if (bullet.fired) {
 		DrawSurface(sdl.renderer, sdl.bullet, bullet.x, bullet.y);
@@ -366,10 +391,10 @@ void MapMove(float delta) {
 
 void SetPlatforms() {
 	platform[0].x = 0;
-	platform[0].width = 300;
+	platform[0].width = 600;
 	platform[0].y = STARTING_Y + sdl.JeremyLeft->h / 2;
-	enemy[0].x = platform[0].x;
-	enemy[0].y = platform[0].y;
+	enemy[0].x = -100;
+	enemy[0].y = 2000;
 	enemy[0].plat = 0;
 	enemy[0].speed = (rand() % 1000)/1000.0;
 	for (int i = 1; i < PLATFORMS; i++) {
@@ -475,6 +500,79 @@ void GameOverScreen(string text) {
 	}
 }
 
+void ResetGame() {
+	new_game = false;
+	gameover = false;
+	SetPlatforms();
+	player.x = 300;
+	player.pre_x = player.x;
+	player.y = SCREEN_HEIGHT / 2;
+	player.pre_y = player.y;
+	bullet.x = NULL;
+	bullet.y = NULL;
+	bullet.fired = false;
+}
+
+void SelectedOptionRect(string text, int selected_option) {
+	int RectX = SCREEN_WIDTH / 2 - 200;
+	int RectY = SCREEN_HEIGHT / 2 - 10 + (selected_option - 1) * 80;
+	int RectWidth = 400;
+	int RectHeight = 40;
+	DrawRect(RectX, RectY, RectWidth, RectHeight, 255, 0, 0);
+	DrawRect(RectX + 5, RectY + 5, RectWidth - 10, RectHeight - 10, 33, 150, 243);
+}
+
+void MenuScreen(string text, int selected_option) {
+
+	text = "Agent Jeremy";
+	DrawText(text, 40, 40, SCREEN_WIDTH / 2 - (text.size() * 40 / 2), MENU_TITLE_Y);
+
+	text = "Start new Game";
+	if (selected_option == 1) {
+		SelectedOptionRect(text, selected_option);
+	}
+	DrawText(text, 20, 20, SCREEN_WIDTH / 2 - (text.size() * 20 / 2), SCREEN_HEIGHT / 2);
+
+	text = "Highscores";
+	if (selected_option == 2) {
+		SelectedOptionRect(text, selected_option);
+	}
+	DrawText(text, 20, 20, SCREEN_WIDTH / 2 - (text.size() * 20 / 2), SCREEN_HEIGHT / 2 + 80);
+}
+
+void MenuChoice(int& selected_option) {
+	while (SDL_PollEvent(&sdl.event)) {
+		switch (sdl.event.type) {
+		case SDL_KEYDOWN:
+			if (sdl.event.key.keysym.sym == SDLK_ESCAPE) {
+				quit = true;
+			}
+			if (sdl.event.key.keysym.sym == SDLK_DOWN) {
+				if (selected_option < 2) {
+					selected_option++;
+				}
+			}
+			if (sdl.event.key.keysym.sym == SDLK_UP) {
+				if (selected_option > 1) {
+					selected_option--;
+				}
+			}
+			if (sdl.event.key.keysym.sym == SDLK_RETURN) {
+				if (selected_option == 1) {
+					in_menu = false;
+					new_game = true;
+				}
+			}
+			break;
+		case SDL_KEYUP:
+			break;
+
+		case SDL_QUIT:
+			quit = true;
+			break;
+		}
+	}
+}
 
 // main
 #ifdef __cplusplus
@@ -487,6 +585,7 @@ int main(int argc, char **argv) {
 
 	double delta;
 	float distance = 0;
+	int selected_option = 1;
 	const Uint8* input = SDL_GetKeyboardState(NULL);
 	InitSDL();
 	quit = false;
@@ -498,37 +597,36 @@ int main(int argc, char **argv) {
 	while(!quit) {
 		t1 = t2 = SDL_GetTicks();
 		timer = 0;
-		new_game = false;
-		gameover = false;
-		SetPlatforms();
-		player.pre_x = 100;
-		player.pre_y = SCREEN_HEIGHT / 2;
-		player.x = 100;
-		player.y = SCREEN_HEIGHT / 2;
-		bullet.x = NULL;
-		bullet.y = NULL;
-		bullet.fired = false;
-		while (!new_game && !quit ) {
+		ResetGame();
 
-			delta = SDL_GetTicks() - t2;
-			t2 = SDL_GetTicks();
+		while (!new_game && !quit) {
 
-			if (!pause && !gameover) {
-				timer += delta;
-				MapMove(delta);
-				EnemyMove(delta);
-				ResetPlatforms();
-				DoJump(delta);
-				Fall();
-				GameOver();
-				BulletMove();
-				BulletKill();
+			if (!in_menu) {
+				delta = SDL_GetTicks() - t2;
+				t2 = SDL_GetTicks();
+
+				if (!pause && !gameover) {
+					timer += delta;
+					MapMove(delta);
+					EnemyMove(delta);
+					ResetPlatforms();
+					DoJump(delta);
+					Fall();
+					GameOver();
+					BulletMove();
+					BulletKill();
+				}
+				DrawSprites();
+				DisplayPoints(timer, text);
+				GameOverScreen(text);
+				RenderScreen();
+				Move(input, delta);
 			}
-			DrawSprites();
-			DisplayPoints(timer, text);
-			GameOverScreen(text);
-			RenderScreen();
-			Move(input, delta);
+			else {
+				MenuChoice(selected_option);
+				MenuScreen(text, selected_option);
+				RenderScreen();
+			}
 		}
 	}
 	FreeSDL();
