@@ -40,7 +40,7 @@ extern "C" {
 #define MENU_TITLE_Y (SCREEN_HEIGHT / 5)
 
 
-bool quit;
+bool quit = false;
 bool gameover = false;
 bool new_game;
 bool pause = false;
