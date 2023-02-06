@@ -40,23 +40,18 @@ extern "C" {
 #define MENU_TITLE_Y (SCREEN_HEIGHT / 5)
 
 
-
-
 bool quit;
 bool gameover = false;
 bool new_game;
 bool pause = false;
 bool in_menu = false;
 
-Uint8 red = 255;
-Uint8 blue = 255;
-Uint8 green = 255;
+
 
 struct Jump {
 	bool in_jump;
 	float jump_value;
 }jump;
-
 
 void DrawSurface(SDL_Renderer* renderer, SDL_Texture* texture, int x, int y) {
 	// Get the width and height of the texture
@@ -74,7 +69,6 @@ void DrawSurface(SDL_Renderer* renderer, SDL_Texture* texture, int x, int y) {
 	SDL_RenderCopy(renderer, texture, NULL, &dest);
 }
 
-
 // rysowanie pojedynczego pixela
 // draw a single pixel
 void DrawPixel(SDL_Surface *surface, int x, int y, Uint32 color) {
@@ -82,7 +76,6 @@ void DrawPixel(SDL_Surface *surface, int x, int y, Uint32 color) {
 	Uint8 *p = (Uint8 *)surface->pixels + y * surface->pitch + x * bpp;
 	*(Uint32 *)p = color;
 	};
-
 
 // rysowanie linii o d³ugoœci l w pionie (gdy dx = 0, dy = 1) 
 // b¹dŸ poziomie (gdy dx = 1, dy = 0)
@@ -94,7 +87,6 @@ void DrawLine(SDL_Surface *screen, int x, int y, int l, int dx, int dy, Uint32 c
 		y += dy;
 		};
 	};
-
 
 struct sdl_structures {
 	SDL_Event event;
@@ -174,8 +166,6 @@ struct Bullet {
 	bool fired = false;;
 }bullet;
 
-
-
 struct colors {
 	int black= SDL_MapRGB(sdl.screen->format, 0x00, 0x00, 0x00);
 	int green = SDL_MapRGB(sdl.screen->format, 0x00, 0xFF, 0x00);
@@ -183,6 +173,8 @@ struct colors {
 	int blue = SDL_MapRGB(sdl.screen->format, 0x11, 0x11, 0xCC);
 	int white = SDL_MapRGB(sdl.screen->format, 255, 255, 255);
 }const color;
+
+
 
 void DrawRect(double x, double y, double width, double height, int red, int green, int blue) {
 	SDL_SetRenderDrawColor(sdl.renderer, red, green, blue, 255);
@@ -590,7 +582,7 @@ int main(int argc, char **argv) {
 	InitSDL();
 	quit = false;
 
-	t1 = t2 = SDL_GetTicks();
+	t2 = t1 = SDL_GetTicks();
 	int timer = 0;
 	string text;
 
