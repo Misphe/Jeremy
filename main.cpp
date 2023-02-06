@@ -5,6 +5,7 @@
 #include <iostream>
 #include <stdlib.h>
 #include <string>
+#include <fstream>
 
 using std::string;
 
@@ -42,9 +43,10 @@ extern "C" {
 
 bool quit = false;
 bool gameover = false;
-bool new_game;
+bool new_game = false;
 bool pause = false;
 bool in_menu = false;
+bool in_highscores = false;
 
 
 
@@ -469,17 +471,31 @@ void DisplayPoints(int timer, string text) {
 	DrawText(text, 16, 16, SCREEN_WIDTH - 200, 50);
 }
 
-void GameOver() {
+void SaveScore(int timer) {
+	int score = timer / 1000;
+	std::ofstream file("Highscores.txt", std::ios::app);
+	if (file.is_open()) {
+		file << score << std::endl;
+		file.close();
+	}
+	else {
+		std::cout << "Unable to open file." << std::endl;
+	}
+}
+
+void GameOver(int timer) {
 	int y_dif = sdl.JeremyLeft->h / 2;
 	int x_dif = sdl.JeremyLeft->w / 2;
 	if (player.y - y_dif >= SCREEN_HEIGHT || player.x + x_dif <= 0) {
 		gameover = true;
+		SaveScore(timer);
 	}
 
 	for (int i = 0; i < PLATFORMS; i++) {
 		if (player.x + x_dif > enemy[i].x && player.x - x_dif < enemy[i].x + enemy[i].width) {
 			if (player.y + y_dif > enemy[i].y - enemy[i].height && player.y - y_dif < enemy[i].y) {
 				gameover = true;
+				SaveScore(timer);
 			}
 		}
 	}
@@ -490,6 +506,21 @@ void GameOverScreen(string text) {
 		text = "You lost! Press n to restart";
 		DrawText(text, 20, 20, SCREEN_WIDTH / 2 - (text.size() * 20 / 2), SCREEN_HEIGHT / 2 - 10);
 	}
+}
+
+void HighscoresScreen(string text) {
+	text = "Highscores";
+	int pos = 150;
+	DrawText(text, 20, 20, SCREEN_WIDTH / 2 - (text.size() * 20 / 2), 100);
+	std::ifstream file("Highscores.txt", std::ios::app);
+	if (file.is_open()) {
+		while (std::getline(file, text)) {
+			text = "- " + text;
+			DrawText(text, 10, 10, SCREEN_WIDTH / 2 - (text.size() * 10 / 2) - 10, pos);
+				pos += 25;
+		}
+	}
+
 }
 
 void ResetGame() {
@@ -555,6 +586,16 @@ void MenuChoice(int& selected_option) {
 					new_game = true;
 				}
 			}
+			if (sdl.event.key.keysym.sym == SDLK_RETURN) {
+				if (selected_option == 2) {
+					in_highscores = true;
+				}
+			}
+			if (sdl.event.key.keysym.sym == SDLK_b) {
+				if (in_highscores) {
+					in_highscores = false;
+				}
+			}
 			break;
 		case SDL_KEYUP:
 			break;
@@ -604,7 +645,7 @@ int main(int argc, char **argv) {
 					ResetPlatforms();
 					DoJump(delta);
 					Fall();
-					GameOver();
+					GameOver(timer);
 					BulletMove();
 					BulletKill();
 				}
@@ -616,7 +657,12 @@ int main(int argc, char **argv) {
 			}
 			else {
 				MenuChoice(selected_option);
-				MenuScreen(text, selected_option);
+				if (!in_highscores) {
+					MenuScreen(text, selected_option);
+				}
+				else {
+					HighscoresScreen(text);
+				}
 				RenderScreen();
 			}
 		}
