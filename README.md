@@ -17,4 +17,7 @@ Jeremy is name of the hero you control.
 ## Next steps
 * Make highscores list
 * make it prettier
-* 
+
+## Launching
+* Open .sln file
+* launch app with 32 bit compiler (x86)
